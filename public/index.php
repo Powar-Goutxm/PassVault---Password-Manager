@@ -10,7 +10,7 @@
     <header class="site-header">
       <div class="container header-row">
         <!-- Consistent global brand -->
-        <a href="./dashboard.php" class="pv-brand">
+        <a href="./index.php" class="pv-brand">
           <div class="pv-logo" aria-hidden="true">
             <svg
               xmlns="http://www.w3.org/2000/svg"
