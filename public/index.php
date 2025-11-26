@@ -52,7 +52,7 @@
               <a class="btn large primary" href="./register.php"
                 >Get Started — It's free</a
               >
-              <a class="btn large ghost" href="./vault.php">Open demo vault</a>
+              <a class="btn large ghost" href="./register.php">Open demo vault</a>
             </div>
 
             <ul class="hero-features">
