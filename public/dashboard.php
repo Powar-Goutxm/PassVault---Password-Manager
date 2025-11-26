@@ -85,7 +85,7 @@ function human_time(string $ts): string {
 
 // ---------- Data functions ----------
 function get_vault_stats(mysqli $conn, int $user_id, ?string $key): array {
-    $out = ['total'=>0,'weak'=>0,'strong'=>0,'recent_added'=>0];
+  $out = ['total'=>0,'weak'=>0,'medium'=>0,'strong'=>0,'recent_added'=>0];
 
     // total
     $stmt = $conn->prepare("SELECT COUNT(*) FROM vault_items WHERE user_id = ?");
@@ -112,16 +112,18 @@ function get_vault_stats(mysqli $conn, int $user_id, ?string $key): array {
     $stmt->execute();
     $res = $stmt->get_result();
     $weak = 0;
+    $medium = 0;
     $strong = 0;
     while ($row = $res->fetch_assoc()) {
-        $plain = decrypt_password_php($row['password_encrypted'] ?? '', $key);
-        $s = score_password($plain);
-        if ($s < 40) $weak++;
-        if ($s >= 90) $strong++;
+      $plain = decrypt_password_php($row['password_encrypted'] ?? '', $key);
+      $s = score_password($plain);
+      if ($s < 40) $weak++;
+      elseif ($s >= 90) $strong++;
+      else $medium++;
     }
     $stmt->close();
-
     $out['weak'] = $weak;
+    $out['medium'] = $medium;
     $out['strong'] = $strong;
     return $out;
 }
@@ -212,32 +214,41 @@ $activity = get_recent_activity($conn, $user_id, 6);
 
   <!-- Stats -->
   <section class="stats-grid">
-    <div class="stat-card">
+    <a href="vault.php" class="stat-card" style="text-decoration:none;color:inherit">
       <div class="stat-header">
         <h4>Total</h4>
         <div class="stat-badge">🔐</div>
       </div>
       <div class="stat-number"><?= intval($stats['total']) ?></div>
       <div class="stat-meta">All saved entries</div>
-    </div>
+    </a>
 
-    <div class="stat-card warning">
+    <a href="vault.php?filter=weak#items" class="stat-card warning" style="text-decoration:none;color:inherit">
       <div class="stat-header">
         <h4>Weak</h4>
         <div class="stat-badge">⚠️</div>
       </div>
       <div class="stat-number"><?= intval($stats['weak']) ?></div>
       <div class="stat-meta">Passwords requiring attention</div>
-    </div>
+    </a>
 
-    <div class="stat-card success">
+    <a href="vault.php?filter=medium#items" class="stat-card muted" style="text-decoration:none;color:inherit">
+      <div class="stat-header">
+        <h4>Medium</h4>
+        <div class="stat-badge">ℹ️</div>
+      </div>
+      <div class="stat-number"><?= intval($stats['medium']) ?></div>
+      <div class="stat-meta">Moderate strength passwords</div>
+    </a>
+
+    <a href="vault.php?filter=strong#items" class="stat-card success" style="text-decoration:none;color:inherit">
       <div class="stat-header">
         <h4>Strong</h4>
         <div class="stat-badge">✅</div>
       </div>
       <div class="stat-number"><?= intval($stats['strong']) ?></div>
       <div class="stat-meta">Very strong passwords</div>
-    </div>
+    </a>
 
     <div class="stat-card">
       <div class="stat-header">
