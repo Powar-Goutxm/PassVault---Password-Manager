@@ -32,7 +32,6 @@ secure data handling, and clean project structure.
 ## 📁 Project Structure
 
 passvault/
-│
 ├── public/ # Public-facing pages
 │ ├── index.php
 │ ├── login.php
@@ -45,11 +44,14 @@ passvault/
 │ └── header.php
 │
 ├── assets/ # CSS & JS files
+│ ├── css/
+│ └── js/
 │
 ├── private/ # Sensitive config (ignored)
 │ └── dbconfig.php
 │
 ├── sql/ # Database schema
+│
 ├── .gitignore
 └── README.md
 
