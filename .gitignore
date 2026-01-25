@@ -1,0 +1,13 @@
+# Security - CRITICAL
+private/secret.key
+private/
+
+# VS Code settings (User preferences shouldn't be shared)
+.vscode/
+
+# Operating System files (Junk files)
+.DS_Store
+Thumbs.db
+
+# PHP Errors or Logs
+*.log
