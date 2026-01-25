@@ -31,29 +31,31 @@ secure data handling, and clean project structure.
 
 ## 📁 Project Structure
 
+```
 passvault/
-├── public/ # Public-facing pages
-│ ├── index.php
-│ ├── login.php
-│ ├── register.php
-│ ├── dashboard.php
-│ └── vault.php
+├── public/
+│   ├── index.php
+│   ├── login.php
+│   ├── register.php
+│   ├── dashboard.php
+│   └── vault.php
 │
-├── includes/ # Shared PHP logic
-│ ├── dbconn.php
-│ └── header.php
+├── includes/
+│   ├── dbconn.php
+│   └── header.php
 │
-├── assets/ # CSS & JS files
-│ ├── css/
-│ └── js/
+├── assets/
+│   ├── css/
+│   └── js/
 │
-├── private/ # Sensitive config (ignored)
-│ └── dbconfig.php
+├── private/
+│   └── dbconfig.php
 │
-├── sql/ # Database schema
+├── sql/
 │
 ├── .gitignore
 └── README.md
+```
 
 ---
 
