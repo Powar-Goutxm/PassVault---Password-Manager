@@ -1,6 +1,25 @@
 <?php
-session_start();
-session_unset();
+require_once __DIR__ . '/../includes/security.php';
+init_secure_session();
+
+// Unset all session variables
+$_SESSION = [];
+
+// Destroy session cookie if cookies are used
+if (ini_get("session.use_cookies")) {
+    $params = session_get_cookie_params();
+    setcookie(
+        session_name(),
+        '',
+        time() - 42000,
+        $params["path"],
+        $params["domain"],
+        $params["secure"],
+        $params["httponly"]
+    );
+}
+
 session_destroy();
 header("Location: ./index.php");
 exit;
+?>

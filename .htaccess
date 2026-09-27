@@ -1,0 +1,20 @@
+# PassVault Root Apache Configuration
+Options -Indexes
+
+# Protect hidden files and directories (like .git, .env)
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Protect private directory
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^private/ - [F,L,NC]
+    RewriteRule ^includes/ - [F,L,NC]
+</IfModule>

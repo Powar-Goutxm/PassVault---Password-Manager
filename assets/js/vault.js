@@ -1,183 +1,321 @@
-//  modal confirmations + copy + edit toggle + generator
+// vault.js — PassVault Vault Management & Interactive Modals
 (() => {
-  // modal elements
-  const backdrop = document.getElementById("confirmModalBackdrop");
-  const modalTitle = document.getElementById("confirmTitle");
-  const modalDesc = document.getElementById("confirmDesc");
-  const btnCancel = document.getElementById("modalCancel");
-  const btnConfirm = document.getElementById("modalConfirm");
+  // Modal elements
+  const confirmBackdrop = document.getElementById("confirmModalBackdrop");
+  const confirmTitle = document.getElementById("confirmTitle");
+  const confirmDesc = document.getElementById("confirmDesc");
+  const btnModalConfirm = document.getElementById("modalConfirm");
 
-  // state for what the modal will do
-  let pendingAction = null;
-  let pendingData = null;
+  const addBackdrop = document.getElementById("addModalBackdrop");
+  const editBackdrop = document.getElementById("editModalBackdrop");
 
-  // helper to show modal
-  function showModal({
-    title,
-    desc,
-    confirmText = "Confirm",
-    danger = false,
-    onConfirm,
-  }) {
-    modalTitle.textContent = title;
-    modalDesc.textContent = desc;
-    btnConfirm.textContent = confirmText;
-    btnConfirm.classList.toggle("danger", !!danger);
-    pendingAction = onConfirm;
-    pendingData = null;
-    backdrop.classList.add("show");
-    backdrop.setAttribute("aria-hidden", "false");
+  // State for confirm modal action
+  let pendingConfirmAction = null;
+
+  // Accessible Modal helpers
+  function openModal(modalEl) {
+    if (!modalEl) return;
+    modalEl.classList.add("show");
+    modalEl.setAttribute("aria-hidden", "false");
+
+    // Focus first interactive element for accessibility
+    const firstInput = modalEl.querySelector("input:not([type='hidden']), button:not(.modal-close-x)");
+    if (firstInput && typeof firstInput.focus === "function") {
+      setTimeout(() => firstInput.focus(), 50);
+    }
   }
 
-  function hideModal() {
-    backdrop.classList.remove("show");
-    backdrop.setAttribute("aria-hidden", "true");
-    pendingAction = null;
-    pendingData = null;
+  function closeModal(modalEl) {
+    if (!modalEl) return;
+    modalEl.classList.remove("show");
+    modalEl.setAttribute("aria-hidden", "true");
+    if (modalEl === confirmBackdrop) {
+      pendingConfirmAction = null;
+    }
   }
 
-  // cancel handler
-  btnCancel.addEventListener("click", hideModal);
-  backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) hideModal(); // click outside closes
+  function closeAllModals() {
+    document.querySelectorAll(".modal-backdrop.show").forEach((m) => closeModal(m));
+  }
+
+  // Global Escape key listener for accessible modal closing
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" || e.keyCode === 27) {
+      closeAllModals();
+    }
   });
 
-  // confirm handler
-  btnConfirm.addEventListener("click", () => {
-    if (typeof pendingAction === "function") pendingAction(pendingData);
-    hideModal();
+  // Modal backdrop click (outside click) & cancel button listeners
+  document.addEventListener("click", (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    // Click on backdrop directly closes modal
+    if (target.classList.contains("modal-backdrop")) {
+      closeModal(target);
+      return;
+    }
+
+    // Cancel buttons inside modals
+    if (target.matches(".modal-cancel-btn") || target.closest(".modal-cancel-btn")) {
+      const parentModal = target.closest(".modal-backdrop");
+      if (parentModal) {
+        closeModal(parentModal);
+      }
+      return;
+    }
   });
+
+  // Confirm Modal Confirm button handler
+  if (btnModalConfirm) {
+    btnModalConfirm.addEventListener("click", () => {
+      if (typeof pendingConfirmAction === "function") {
+        pendingConfirmAction();
+      }
+      closeModal(confirmBackdrop);
+    });
+  }
+
+  // Helper to show confirm modal
+  function showConfirmModal({ title, desc, confirmText = "Confirm", danger = false, onConfirm }) {
+    if (!confirmBackdrop) return;
+    if (confirmTitle) confirmTitle.textContent = title;
+    if (confirmDesc) confirmDesc.textContent = desc;
+    if (btnModalConfirm) {
+      btnModalConfirm.textContent = confirmText;
+      btnModalConfirm.classList.toggle("danger", !!danger);
+    }
+    pendingConfirmAction = onConfirm;
+    openModal(confirmBackdrop);
+  }
+
+  // Add Modal Trigger
+  const openAddModalBtn = document.getElementById("openAddModalBtn");
+  if (openAddModalBtn) {
+    openAddModalBtn.addEventListener("click", () => {
+      const addForm = document.getElementById("addForm");
+      if (addForm) addForm.reset();
+      const addPw = document.getElementById("addPassword");
+      if (addPw) {
+        addPw.value = "";
+        addPw.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      openModal(addBackdrop);
+    });
+  }
+
+  // Auto-open Add Modal if URL hash is #add
+  if (window.location.hash === "#add" && addBackdrop) {
+    openModal(addBackdrop);
+  }
+
+  // Helper to retrieve decrypted password on-demand (SEC-04 Remediation)
+  function getPasswordOnDemand(tr, callback) {
+    if (tr.dataset.plainPassword !== undefined) {
+      callback(tr.dataset.plainPassword);
+      return;
+    }
+
+    const itemId = tr.dataset.id;
+    const csrfInput = document.querySelector('input[name="csrf_token"]');
+    const csrfToken = csrfInput ? csrfInput.value : "";
+
+    const formData = new FormData();
+    formData.append("action", "reveal");
+    formData.append("id", itemId);
+    formData.append("csrf_token", csrfToken);
+
+    fetch("vault.php", {
+      method: "POST",
+      body: formData,
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && typeof data.password === "string") {
+          tr.dataset.plainPassword = data.password;
+          callback(data.password);
+        } else {
+          alert(data.error || "Failed to load password.");
+        }
+      })
+      .catch(() => {
+        alert("Network or security error retrieving password.");
+      });
+  }
+
+  // CSPRNG Strong Password Generator (SEC-05 Remediation)
+  function generateSecurePassword(len = 16) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=";
+    const randomValues = new Uint32Array(len);
+    window.crypto.getRandomValues(randomValues);
+    let out = "";
+    for (let i = 0; i < len; i++) {
+      out += chars.charAt(randomValues[i] % chars.length);
+    }
+    return out;
+  }
 
   // Click delegation for page actions
   document.addEventListener("click", (e) => {
     const el = e.target;
     if (!(el instanceof HTMLElement)) return;
 
-    // DELETE button: open confirm modal for delete
-    if (el.matches(".delete-btn")) {
-      const form = el.closest("form.delete-form");
+    // DELETE BUTTON -> Open accessible confirm modal
+    const deleteBtn = el.matches(".delete-btn") ? el : el.closest(".delete-btn");
+    if (deleteBtn) {
+      const form = deleteBtn.closest("form.delete-form");
       if (!form) return;
-      // modal text
-      showModal({
-        title: "Delete password",
-        desc: "This will permanently delete the saved password. This action cannot be undone.",
+      const website = deleteBtn.dataset.website || "";
+      const desc = website
+        ? `Are you sure you want to permanently delete the password for "${website}"? This action cannot be undone.`
+        : "Are you sure you want to permanently delete this saved password? This action cannot be undone.";
+
+      showConfirmModal({
+        title: "Delete Password",
+        desc: desc,
         confirmText: "Delete",
         danger: true,
         onConfirm: () => {
-          // submit the form after confirm
           form.submit();
         },
       });
       return;
     }
 
-    // SIMPLE SHOW / HIDE TOGGLE
-    // SHOW / HIDE toggle — robust and simple
-    if (el.matches(".show-btn")) {
-      const tr = el.closest("tr");
+    // EDIT BUTTON -> Open accessible Edit Modal
+    const editBtn = el.matches(".edit-btn") ? el : el.closest(".edit-btn");
+    if (editBtn) {
+      const tr = editBtn.closest("tr");
+      const id = editBtn.dataset.id || (tr ? tr.dataset.id : "");
+      const website = editBtn.dataset.website || (tr ? tr.dataset.website : "") || "";
+      const username = editBtn.dataset.username || (tr ? tr.dataset.username : "") || "";
+
+      const editIdInput = document.getElementById("editEntryId");
+      const editWebInput = document.getElementById("editWebsite");
+      const editUserInput = document.getElementById("editUsername");
+      const editPwInput = document.getElementById("editPassword");
+
+      if (editIdInput) editIdInput.value = id;
+      if (editWebInput) editWebInput.value = website;
+      if (editUserInput) editUserInput.value = username;
+      if (editPwInput) {
+        editPwInput.value = "";
+        editPwInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+
+      openModal(editBackdrop);
+      return;
+    }
+
+    // ON-DEMAND SECURE SHOW / HIDE TOGGLE
+    const showBtn = el.matches(".show-btn") ? el : el.closest(".show-btn");
+    if (showBtn) {
+      const tr = showBtn.closest("tr");
       if (!tr) return;
 
       const masked = tr.querySelector(".masked");
       const plain = tr.querySelector(".plain");
       if (!masked || !plain) return;
 
-      // If plain is currently visible (computed)
       const plainShown = window.getComputedStyle(plain).display !== "none";
 
       if (plainShown) {
-        // hide plain, show masked
         plain.style.display = "none";
-        masked.style.display = ""; // revert to default (inline)
-        el.textContent = "Show";
+        masked.style.display = "";
+        showBtn.textContent = "Show";
       } else {
-        // show plain, hide masked
-        plain.style.display = "inline";
-        masked.style.display = "none";
-        el.textContent = "Hide";
+        showBtn.textContent = "...";
+        getPasswordOnDemand(tr, (password) => {
+          plain.textContent = password;
+          plain.style.display = "inline";
+          masked.style.display = "none";
+          showBtn.textContent = "Hide";
+        });
       }
       return;
     }
 
-    // COPY
-    if (el.matches(".copy-btn")) {
-      const tr = el.closest("tr");
+    // ON-DEMAND SECURE COPY (1400ms feedback)
+    const copyBtn = el.matches(".copy-btn") ? el : el.closest(".copy-btn");
+    if (copyBtn) {
+      const tr = copyBtn.closest("tr");
       if (!tr) return;
-      const plain = tr.querySelector(".plain");
-      if (!plain) return;
-      const text = plain.textContent || "";
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          const prev = el.textContent;
-          el.textContent = "Copied";
-          setTimeout(() => {
-            el.textContent = prev || "Copy";
-          }, 1400);
-        })
-        .catch(() => alert("Copy failed. Try manually."));
-      return;
-    }
 
-    // EDIT toggle
-    if (el.matches(".edit-toggle")) {
-      const id = el.dataset.id;
-      const row = document.getElementById("edit-" + id);
-      if (row) row.style.display = "";
-      return;
-    }
-    if (el.matches(".edit-cancel")) {
-      const id = el.dataset.id;
-      const row = document.getElementById("edit-" + id);
-      if (row) row.style.display = "none";
-      return;
-    }
-
-    // PASSWORD GENERATOR
-    if (el.matches("#genBtn")) {
-      showModal({
-        title: "Generate strong password?",
-        desc: "A secure, random password will be generated and placed into the password field.",
-        confirmText: "Generate",
-        danger: false,
-        onConfirm: () => {
-          const len = 16;
-          const chars =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=";
-          let out = "";
-          for (let i = 0; i < len; i++) {
-            out += chars.charAt(Math.floor(Math.random() * chars.length));
-          }
-          const input = document.getElementById("new-password");
-          if (input instanceof HTMLInputElement) {
-            input.value = out;
-            // notify listeners (so strength meter updates)
-            input.dispatchEvent(new Event("input", { bubbles: true }));
-            input.focus();
-          }
-        },
+      const prev = copyBtn.textContent;
+      copyBtn.textContent = "...";
+      getPasswordOnDemand(tr, (password) => {
+        navigator.clipboard
+          .writeText(password)
+          .then(() => {
+            copyBtn.textContent = "Copied";
+            setTimeout(() => {
+              copyBtn.textContent = prev || "Copy";
+            }, 1400);
+          })
+          .catch(() => {
+            copyBtn.textContent = prev || "Copy";
+            alert("Copy failed. Please try manually.");
+          });
       });
       return;
     }
+
+    // CSPRNG GENERATOR BUTTONS (Add modal & Edit modal)
+    const genAddBtn = el.matches("#genAddBtn") || el.closest("#genAddBtn") || el.matches("#genBtn") || el.closest("#genBtn");
+    if (genAddBtn) {
+      const input = document.getElementById("addPassword") || document.getElementById("new-password");
+      if (input instanceof HTMLInputElement) {
+        input.value = generateSecurePassword(16);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+      }
+      return;
+    }
+
+    const genEditBtn = el.matches("#genEditBtn") || el.closest("#genEditBtn");
+    if (genEditBtn) {
+      const input = document.getElementById("editPassword");
+      if (input instanceof HTMLInputElement) {
+        input.value = generateSecurePassword(16);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.focus();
+      }
+      return;
+    }
   });
+
+  // Client-Side Live Search on #vaultSearch
+  const searchInput = document.getElementById("vaultSearch");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      const term = searchInput.value.trim().toLowerCase();
+      const rows = document.querySelectorAll("#credentialsTable tbody tr[data-id]");
+      let matchCount = 0;
+
+      rows.forEach((row) => {
+        const site = (row.dataset.website || row.querySelector(".site-col")?.textContent || "").toLowerCase();
+        const user = (row.dataset.username || row.querySelector(".user-col")?.textContent || "").toLowerCase();
+        const matches = term === "" || site.includes(term) || user.includes(term);
+
+        row.style.display = matches ? "" : "none";
+        if (matches) matchCount++;
+      });
+
+      const noMatchRow = document.getElementById("noSearchMatchRow");
+      if (noMatchRow) {
+        noMatchRow.style.display = (matchCount === 0 && rows.length > 0) ? "" : "none";
+      }
+    });
+  }
+
+  // Expose modal helpers globally if needed
+  window.pv_openModal = openModal;
+  window.pv_closeModal = closeModal;
 })();
 
-// mobile toggle for clean nav
+/* ---------- Dark Theme Password Strength Meter ---------- */
 (function () {
-  const hamburger = document.getElementById("clean-hamburger");
-  const navWrap = document.querySelector(".modern-clean .nav-wrap");
-  const cleanNav = document.querySelector(".modern-clean .nav-center");
-
-  if (!hamburger || !navWrap) return;
-  hamburger.addEventListener("click", () => {
-    const open = navWrap.classList.toggle("open");
-    hamburger.setAttribute("aria-expanded", open ? "true" : "false");
-    cleanNav.style.display = open ? "block" : "";
-  });
-})();
-
-/* ---------- Password strength checker ---------- */
-(function () {
-  // common weak passwords to penalize
   const common = [
     "123456",
     "password",
@@ -195,7 +333,7 @@
     let score = 0;
 
     // length
-    score += Math.min(40, pw.length * 3); // up to 40
+    score += Math.min(40, pw.length * 3);
 
     // variety: uppercase, lowercase, digits, symbols
     if (/[a-z]/.test(pw)) score += 10;
@@ -206,14 +344,16 @@
     // bonus for long passphrases
     if (pw.length >= 16) score += 10;
 
-    // penalty for common passwords or repetitive sequences
+    // penalty for common passwords
     const low = pw.toLowerCase();
-    for (const c of common)
-      if (low.includes(c)) score = Math.max(0, score - 40);
+    for (const c of common) {
+      if (low.includes(c)) {
+        score = Math.max(0, score - 40);
+        break;
+      }
+    }
 
-    // cap
-    score = Math.max(0, Math.min(100, Math.round(score)));
-    return score;
+    return Math.max(0, Math.min(100, Math.round(score)));
   }
 
   function labelForScore(s) {
@@ -225,10 +365,8 @@
 
   function updateMeterForInput(inputEl) {
     if (!(inputEl instanceof HTMLInputElement)) return;
-    // find nearest .pw-strength (either nextSibling or parent)
     let meter = inputEl.nextElementSibling;
     if (!meter || !meter.classList.contains("pw-strength")) {
-      // try parent search
       meter = inputEl.parentElement
         ? inputEl.parentElement.querySelector(".pw-strength")
         : null;
@@ -237,49 +375,50 @@
 
     const barSpans = Array.from(meter.querySelectorAll(".pw-bar span"));
     const label = meter.querySelector(".pw-label");
-    const score = scorePassword(inputEl.value || "");
+    const val = inputEl.value || "";
 
+    if (!val) {
+      barSpans.forEach((sp) => {
+        sp.className = "";
+      });
+      if (label) {
+        label.textContent = "Strength";
+        label.className = "pw-label";
+      }
+      return;
+    }
+
+    const score = scorePassword(val);
     const info = labelForScore(score);
 
-    // clear all active classes then set based on level
     barSpans.forEach((sp, idx) => {
-      sp.className = ""; // reset classes
+      sp.className = "";
       if (idx < info.level) {
-        // set color class depending on level
         const clsMap = ["active-1", "active-2", "active-3", "active-4"];
-        sp.classList.add(
-          clsMap[Math.max(0, Math.min(clsMap.length - 1, info.level - 1))]
-        );
+        sp.classList.add(clsMap[Math.max(0, Math.min(clsMap.length - 1, info.level - 1))]);
       }
     });
 
-    // set label text & class
-    label.textContent = info.text + (inputEl.value ? ` · ${score}%` : "");
-    label.className = "pw-label " + info.cls;
+    if (label) {
+      label.textContent = info.text + ` · ${score}%`;
+      label.className = "pw-label " + info.cls;
+    }
   }
 
-  // wire up all existing and future password inputs
   function attachListeners() {
-    // initial: all current inputs with class 'password-input'
     const inputs = document.querySelectorAll("input.password-input");
     inputs.forEach((inp) => {
-      // avoid double-binding
       if (inp._pwBound) return;
       inp._pwBound = true;
-
-      // on input update meter
       inp.addEventListener("input", () => updateMeterForInput(inp));
-      // update initial state (in case prefilled)
       updateMeterForInput(inp);
     });
   }
 
-  // run on DOM ready and expose a re-run utility for dynamically added rows
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", attachListeners);
   } else {
     attachListeners();
   }
-  // expose fn for manual reattach (if you add rows dynamically)
   window.pv_attach_pw_strength = attachListeners;
 })();

@@ -1,72 +1,48 @@
 # PassVault 🔐
 
-A simple PHP-based password manager built to understand authentication, secure data handling, and clean project structure.
+A modern, open-source web password manager built with **PHP**, **MySQL**, and a sleek **Deep Obsidian & Cyber Cyan** glassmorphism design system. Built with focus on real cryptographic primitives, defensive security controls, and responsive UI/UX.
 
 ---
 
-## ✨ Features
+## ✨ Highlights & Features
 
-- User authentication (register, login, logout)
-- Secure session handling
-- Password vault dashboard
-- CRUD operations for password management
-- Modular PHP structure using `includes/`
-- Separation of sensitive configuration
-- Clean UI with CSS & JavaScript assets
+### 🎨 Modern Glassmorphism UI
+- **Obsidian & Cyber Cyan Theme**: High-contrast, dark glass aesthetic (`#090d16` canvas, `#22d3ee` cyan, `#6366f1` indigo) with 12px backdrop blur.
+- **Unified Experience**: Consistent typography (**Outfit** for headings, **Inter** for data/UI) across the marketing landing page, auth flows, and internal app shell.
+- **Interactive Vault**: Client-side instant credential search, strength filter pills, and accessible dark frosted Add/Edit/Delete modals.
+- **Integrated Password Tools**: Browser-based CSPRNG password generator and live visual strength analyzer.
+- **Mobile Responsive**: Custom hamburger menu drawer with smooth transitions and full compliance with `@media (prefers-reduced-motion: reduce)`.
+
+### 🛡️ Defensive Security & Cryptography
+- **AES-256-GCM at Rest**: All stored credentials are encrypted using authenticated AES-256-GCM with a server-held master key.
+- **On-Demand Decryption**: Ciphertext stays masked and is decrypted on the server only when an authenticated user requests a reveal or copy action via AJAX.
+- **Hashed Logins**: Account passwords are independently hashed with `password_hash()` (Bcrypt/Argon2id) and never stored in plaintext.
+- **CSRF Protection**: Cryptographically secure CSRF tokens required on all state-changing `POST` requests.
+- **Rate Limiting**: Built-in throttling on failed login and password reset requests by IP to protect against brute-force attacks.
+- **Secure Password Recovery**: Time-limited (30 min) reset tokens stored as SHA-256 hashes at rest with enumeration-resistant responses.
+- **Session Hygiene**: Session regeneration on privilege escalation, `HttpOnly`, and secure cookie parameters.
 
 ---
 
 ## 📸 Screenshots
 
-### Home Page
+| Landing Page | Login |
+| :---: | :---: |
+| ![Landing Page](screenshots/home.png) | ![Login](screenshots/login.png) |
 
-![Home Page](screenshots/home.png)
-_Landing page with overview of PassVault features_
-
-### Login
-
-![Login Page](screenshots/login.png)
-_Secure user login interface_
-
-### Register
-
-![Register Page](screenshots/register.png)
-_New user registration form_
-
-### Dashboard
-
-![Dashboard](screenshots/dashboard.png)
-_User dashboard showing vault overview and statistics_
-
-### Vault - View Passwords
-
-![Vault View](screenshots/vault-view.png)
-_Password vault displaying all saved credentials_
-
-### Vault - Add Password
-
-![Add Password](screenshots/vault-add.png)
-_Form to add new password entries_
-
-### Vault - Edit Password
-
-![Edit Password](screenshots/vault-edit.png)
-_Interface to update existing password entries_
-
-### Vault - Delete Password
-
-![Delete Password](screenshots/vault-delete.png)
-_Confirmation dialog for deleting passwords_
+| Dashboard | Vault |
+| :---: | :---: |
+| ![Dashboard](screenshots/dashboard.png) | ![Vault View](screenshots/vault-view.png) |
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Backend:** PHP (mysqli)
-- **Frontend:** HTML, CSS, JavaScript
-- **Database:** MySQL
-- **Server:** Apache (XAMPP)
-- **Version Control:** Git & GitHub
+- **Backend:** PHP 8.x (mysqli, OpenSSL)
+- **Frontend:** Vanilla HTML5, CSS3 (CSS Variables, Flexbox/Grid, Glassmorphism), Vanilla JavaScript (ES6+)
+- **Database:** MySQL 8.x / MariaDB
+- **Server:** Apache (XAMPP) or Docker Compose
+- **Typography:** Google Fonts (Outfit & Inter)
 
 ---
 
@@ -74,154 +50,127 @@ _Confirmation dialog for deleting passwords_
 
 ```
 passvault/
-├── public/
-│   ├── index.php
-│   ├── login.php
-│   ├── register.php
-│   ├── dashboard.php
-│   └── vault.php
-│
-├── includes/
-│   ├── dbconn.php
-│   └── header.php
-│
 ├── assets/
 │   ├── css/
+│   │   ├── auth.css           # Glassmorphism auth styling (login, register, reset)
+│   │   ├── dashboard.css      # Dashboard KPI cards, health meter, activity stream
+│   │   ├── header.css         # Modern frosted nav header and mobile drawer
+│   │   ├── landing.css        # Hero, interactive mock, feature cards, footer
+│   │   ├── style.css          # Legacy fallback styles
+│   │   └── theme.css          # Core design tokens & color palette
 │   └── js/
-│
+│       ├── header.js          # Mobile navigation toggle
+│       ├── landing.js         # Scroll reveal animations & interactive hero mock
+│       └── vault.js           # AJAX decryption, search filtering, modals, generator
+├── includes/
+│   ├── .htaccess              # Direct access restriction
+│   ├── dbconn.php             # Database connection & AES-256-GCM encryption helpers
+│   ├── header.php             # Logged-in application navigation bar
+│   ├── marketing-nav.php      # Public marketing landing navigation
+│   └── security.php           # Session security, CSRF protection, rate limiting, token helpers
 ├── private/
-│   └── dbconfig.php
-│
+│   ├── .htaccess              # Denies all web access
+│   ├── dbconfig.php           # Database credentials (gitignored)
+│   └── secret.key             # Master AES-256 encryption key (gitignored)
+├── public/
+│   ├── about.php              # Public truth-bound about page
+│   ├── dashboard.php          # Main dashboard view with KPI stats & health meter
+│   ├── forgot-password.php    # Password recovery request flow
+│   ├── index.php              # Landing page
+│   ├── login.php              # Account authentication
+│   ├── logout.php             # Secure session destruction
+│   ├── register.php           # New user registration
+│   ├── reset.php              # Token-verified password reset
+│   ├── settings.php           # User account & password management
+│   └── vault.php              # Credential management & CRUD modals
+├── screenshots/               # Application preview screenshots
 ├── sql/
-│
-├── screenshots/
-│   ├── home.png
-│   ├── login.png
-│   ├── register.png
-│   ├── dashboard.png
-│   ├── vault-view.png
-│   ├── vault-add.png
-│   ├── vault-edit.png
-│   └── vault-delete.png
-│
+│   ├── schema.sql             # Base database schema
+│   └── migrate_password_resets.sql # Password reset tokens schema
 ├── .gitignore
+├── docker-compose.yml         # Containerized setup
+├── Dockerfile                 # Container image specification
 └── README.md
 ```
 
 ---
 
-## 🔒 Security Notes
-
-- Database credentials are stored outside the public codebase
-- The `private/` directory is ignored using `.gitignore`
-- No secrets are committed to the repository
-- Passwords should be hashed using bcrypt or similar algorithms
-- Session management includes security best practices
-- Input validation and sanitization implemented
-
----
-
 ## 🚀 Local Setup (XAMPP)
 
-1. **Clone the repository:**
+### 1. Clone the repository
+```bash
+git clone https://github.com/Powar-Goutxm/PassVault---Password-Manager.git
+cd PassVault---Password-Manager
+```
 
-   ```bash
-   git clone https://github.com/Powar-Goutxm/PassVault---Password-Manager.git
-   cd PassVault---Password-Manager
+### 2. Move to your XAMPP web root
+Move or symlink the folder into `C:\xampp\htdocs\passvault`.
+
+### 3. Setup the Database
+1. Open phpMyAdmin (`http://localhost/phpmyadmin`) or your MySQL CLI.
+2. Create a database named `passvault`:
+   ```sql
+   CREATE DATABASE passvault CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
+3. Import the schemas located in `sql/`:
+   - `sql/schema.sql`
+   - `sql/migrate_password_resets.sql`
 
-2. **Move the project into XAMPP:**
+### 4. Configure Database Credentials
+Create `private/dbconfig.php`:
+```php
+<?php
+define('DB_HOST', 'localhost');
+define('DB_USER', 'root');
+define('DB_PASS', '');
+define('DB_NAME', 'passvault');
+```
 
-   ```
-   xampp/htdocs/passvault/
-   ```
+Generate or place your 32-byte encryption key in `private/secret.key`:
+```php
+<?php
+// You can generate a 32-byte random key once:
+file_put_contents('private/secret.key', random_bytes(32));
+```
 
-3. **Create MySQL database:**
-   - Open phpMyAdmin (`http://localhost/phpmyadmin`)
-   - Create a new database named: `passvault`
-   - Import the SQL file from `sql/` directory
+### 5. Start Servers
+Launch Apache and MySQL via the **XAMPP Control Panel** or run `C:\xampp\xampp_start.exe`.
 
-4. **Configure database credentials:**
-   - Create `private/dbconfig.php` file
-   - Add your database credentials (default XAMPP credentials shown):
-
-   ```php
-   <?php
-   define('DB_HOST', 'localhost');
-   define('DB_USER', 'root'); // Default username
-   define('DB_PASS', '');  // Empty for default XAMPP
-   define('DB_NAME', 'passvault');
-   ?>
-   ```
-
-5. **Start servers:**
-   - Open XAMPP Control Panel
-   - Start Apache & MySQL
-
-6. **Access the application:**
-   ```
-   http://localhost/passvault/
-   ```
+### 6. Access the Application
+Open your browser and navigate to:
+```
+http://localhost/passvault/public/index.php
+```
 
 ---
 
-## 📊 Database Schema
+## 🐳 Docker Setup (Alternative)
 
-The project uses the following main tables:
+If you prefer running with Docker Compose:
 
-- `users` - Stores user account information
-- `passwords` - Stores encrypted password entries
-- Additional tables as needed for sessions and logging
-
----
-
-## 🎯 Learning Objectives
-
-This project demonstrates:
-
-- ✅ PHP session management and authentication
-- ✅ MySQL database design and queries
-- ✅ Secure password handling
-- ✅ CRUD operations implementation
-- ✅ Modular PHP project structure
-- ✅ Git version control practices
-- ✅ Configuration management
+```bash
+docker compose up -d --build
+```
+The app will be available at `http://localhost:8080`.
 
 ---
 
-## 🤝 Contributing
+## 🔒 Security Threat Model & Invariants
 
-This is a learning project, but suggestions and improvements are welcome!
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is open source and available for educational purposes.
+* **Server-Held Master Key**: PassVault encrypts vault credentials using AES-256-GCM with a server key (`private/secret.key`). It is a self-hosted web vault; it does not claim zero-knowledge client-side encryption.
+* **Master Password Independence**: The user's login password is used solely for authentication and is hashed with `password_hash()`. Changing or resetting an account password does not require re-encrypting existing vault records.
+* **Separation of Concerns**: Sensitive directories (`private/`, `includes/`) are locked down via Apache `.htaccess` rules and excluded from version control.
 
 ---
 
 ## 👨‍💻 Author
 
 **Goutam Powar**
-
 - GitHub: [@Powar-Goutxm](https://github.com/Powar-Goutxm)
 - LinkedIn: [Goutam Powar](https://linkedin.com/in/goutam-powar)
 
 ---
 
-## 🙏 Acknowledgments
+## 📄 License
 
-- Built as a learning project to understand PHP authentication and security
-- Inspired by modern password manager applications
-- Thanks to the open-source community for various resources and tutorials
-
----
-
-**⭐ If you found this project helpful, please give it a star!**
+This project is open-source and available under the MIT License.
